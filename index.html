@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Space Explorer — NASA Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Syne:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ═══════════════════════════════════════════
+   RESET & VARIABILI
+═══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif !important; }
+
+:root {
+  --bg:        #020510;
+  --bg2:       #070d1f;
+  --glass:     rgba(255,255,255,0.04);
+  --glass-b:   rgba(255,255,255,0.08);
+  --border:    rgba(255,255,255,0.09);
+  --accent:    #e8a838;
+  --accent2:   #4fc3f7;
+  --accent3:   #ff5c5c;
+  --text:      #e8eaf6;
+  --text-dim:  #7986a3;
+  --font-head: 'Orbitron', monospace;
+  --font-body: 'Syne', sans-serif;
+  --nav-w:     240px;
+  --radius:    16px;
+}
+
+html { scroll-behavior: smooth; }
+
+html { background: var(--bg); }
+
+body {
+  background: transparent;
+  color: var(--text);
+  
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════
+   STELLE ANIMATE
+═══════════════════════════════════════════ */
+#stars-canvas {
+  position: fixed; inset: 0;
+  z-index: -1; pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════
+   SIDEBAR NAV
+═══════════════════════════════════════════ */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: var(--nav-w);
+  background: linear-gradient(180deg, rgba(7,13,31,0.98) 0%, rgba(2,5,16,0.98) 100%);
+  border-right: 1px solid var(--border);
+  z-index: 100;
+  display: flex; flex-direction: column;
+  padding: 28px 0 24px;
+  backdrop-filter: blur(20px);
+}
+
+.logo {
+  padding: 0 24px 32px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.logo-icon { font-size: 28px; margin-bottom: 6px; display: block; }
+.logo-title {
+ 
+  font-size: 13px; font-weight: 800;
+  letter-spacing: 2px; color: var(--accent);
+  line-height: 1.2;
+}
+.logo-sub {
+  font-size: 10px; color: var(--text-dim);
+  letter-spacing: 1.5px; text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.nav-group-label {
+  font-size: 9px; letter-spacing: 2.5px; color: var(--text-dim);
+  text-transform: uppercase; padding: 0 24px 8px;
+  
+}
+
+.nav-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 24px;
+  cursor: pointer; position: relative;
+  transition: all .2s; border-left: 3px solid transparent;
+  color: var(--text-dim); font-size: 13px; letter-spacing: .5px;
+}
+.nav-item:hover { color: var(--text); background: var(--glass); }
+.nav-item.active {
+  color: var(--accent); border-left-color: var(--accent);
+  background: rgba(232,168,56,0.07);
+}
+.nav-item .nav-icon { font-size: 17px; width: 22px; text-align: center; }
+
+.sidebar-footer {
+  margin-top: auto; padding: 16px 24px 0;
+  border-top: 1px solid var(--border);
+}
+.api-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(79,195,247,.1); border: 1px solid rgba(79,195,247,.2);
+  color: var(--accent2); border-radius: 20px;
+  padding: 5px 10px; font-size: 10px; letter-spacing: 1px;
+}
+.dot-live { width: 6px; height: 6px; border-radius: 50%;
+  background: #4caf50; box-shadow: 0 0 6px #4caf50; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ═══════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════ */
+.main {
+  margin-left: var(--nav-w);
+  padding: 40px 44px;
+  position: relative; z-index: 1;
+  min-height: 100vh;
+}
+
+/* ═══════════════════════════════════════════
+   SEZIONI
+═══════════════════════════════════════════ */
+.section { display: none; animation: fadeUp .4s ease; }
+.section.active { display: block; }
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(18px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.section-header {
+  display: flex; align-items: baseline; gap: 14px;
+  margin-bottom: 32px;
+}
+.section-header h1 {
+  
+  font-size: 22px; font-weight: 800;
+  letter-spacing: 2px; color: var(--text);
+}
+.section-header .tag {
+  font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 3px 8px; text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════════
+   GLASS CARD
+═══════════════════════════════════════════ */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+  transition: border-color .25s, transform .25s;
+}
+.card:hover { border-color: rgba(255,255,255,.16); transform: translateY(-2px); }
+
+/* ═══════════════════════════════════════════
+   SEZIONE APOD
+═══════════════════════════════════════════ */
+#apod-controls {
+  display: flex; gap: 12px; margin-bottom: 28px; align-items: flex-end;
+}
+.input-group label {
+  display: block; font-size: 10px; letter-spacing: 2px;
+  color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;
+}
+.input-group input, .input-group select {
+  background: var(--glass); border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px;
+  padding: 10px 14px; 
+  font-size: 13px; outline: none;
+  transition: border-color .2s;
+}
+.input-group input:focus, .input-group select:focus {
+  border-color: var(--accent);
+}
+.input-group input[type="date"] { color-scheme: dark; }
+
+.btn {
+  padding: 10px 22px; border: none; border-radius: 10px;
+  cursor: pointer; 
+  font-size: 10px; font-weight: 600; letter-spacing: 2px;
+  transition: all .2s; outline: none;
+}
+.btn-primary {
+  background: var(--accent); color: #000;
+}
+.btn-primary:hover { background: #f0b840; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(232,168,56,.35); }
+
+.btn-ghost {
+  background: var(--glass); border: 1px solid var(--border); color: var(--text);
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+/* APOD Hero */
+.apod-hero {
+  display: grid; grid-template-columns: 1fr 420px; gap: 24px;
+}
+.apod-img-wrap {
+  position: relative; border-radius: var(--radius); overflow: hidden;
+  aspect-ratio: 16/10;
+}
+.apod-img-wrap img {
+  width: 100%; height: 100%; object-fit: cover;
+  transition: transform .5s ease;
+}
+.apod-img-wrap:hover img { transform: scale(1.03); }
+.apod-img-wrap iframe { width:100%; height:100%; border:none; }
+
+.apod-info { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+.apod-date-tag {
+   font-size: 9px; letter-spacing: 3px;
+  color: var(--accent); text-transform: uppercase;
+}
+.apod-title {
+ font-size: 20px; font-weight: 800;
+  line-height: 1.3; color: var(--text);
+}
+.apod-copyright { font-size: 11px; color: var(--text-dim); }
+.apod-explanation {
+  font-size: 13.5px; color: rgba(232,234,246,.7);
+  line-height: 1.75; flex: 1;
+  overflow-y: auto; max-height: 320px;
+  scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+}
+.apod-actions { display: flex; gap: 10px; }
+
+/* ═══════════════════════════════════════════
+   SEZIONE NEO (ASTEROIDI)
+═══════════════════════════════════════════ */
+.neo-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px;
+}
+.stat-card {
+  background: var(--glass); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 22px;
+}
+.stat-card .stat-val {
+ font-size: 32px; font-weight: 800;
+  line-height: 1;
+}
+.stat-card .stat-label {
+  font-size: 10px; letter-spacing: 2px; color: var(--text-dim);
+  text-transform: uppercase; margin-top: 6px;
+}
+.stat-card.danger .stat-val { color: var(--accent3); }
+.stat-card.total  .stat-val { color: var(--accent2); }
+.stat-card.speed  .stat-val { color: var(--accent); }
+
+.neo-table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; }
+thead th {
+  background: rgba(255,255,255,.04);
+  padding: 12px 16px; text-align: left;
+  font-size: 9px; letter-spacing: 2px;
+  color: var(--text-dim); text-transform: uppercase; white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+tbody tr { border-bottom: 1px solid rgba(255,255,255,.04); transition: background .15s; }
+tbody tr:hover { background: var(--glass); }
+tbody td { padding: 12px 16px; font-size: 13px; }
+tbody tr:last-child { border-bottom: none; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 20px; font-size: 10px;
+  letter-spacing: .5px; font-weight: 600;
+}
+.badge-danger { background: rgba(255,92,92,.15); color: var(--accent3); border: 1px solid rgba(255,92,92,.3); }
+.badge-safe   { background: rgba(76,175,80,.1);  color: #66bb6a;         border: 1px solid rgba(76,175,80,.25); }
+
+/* ═══════════════════════════════════════════
+   SEZIONE GALLERY
+═══════════════════════════════════════════ */
+.search-bar {
+  display: flex; gap: 12px; margin-bottom: 28px;
+}
+.search-bar input {
+  flex: 1; background: var(--glass); border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px; padding: 12px 18px;
+  font-size: 14px; outline: none;
+  transition: border-color .2s;
+}
+.search-bar input::placeholder { color: var(--text-dim); }
+.search-bar input:focus { border-color: var(--accent2); }
+
+.quick-tags { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.quick-tag {
+  padding: 6px 14px; border-radius: 20px; cursor: pointer;
+  border: 1px solid var(--border); font-size: 12px; color: var(--text-dim);
+  transition: all .2s;
+}
+.quick-tag:hover { border-color: var(--accent2); color: var(--accent2); }
+
+.gallery-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+}
+.gallery-card {
+  border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); background: var(--glass);
+  cursor: pointer; transition: all .25s;
+}
+.gallery-card:hover { border-color: rgba(79,195,247,.3); transform: translateY(-3px); }
+.gallery-card img {
+  width: 100%; aspect-ratio: 16/10; object-fit: cover;
+  display: block;
+}
+.gallery-card .g-info { padding: 12px 14px; }
+.gallery-card .g-title { font-size: 13px; font-weight: 500; line-height: 1.4; margin-bottom: 4px; }
+.gallery-card .g-date  { font-size: 11px; color: var(--text-dim); }
+.no-img {
+  width: 100%; aspect-ratio: 16/10;
+  background: linear-gradient(135deg, #0a1230, #0d1f3c);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px;
+}
+
+/* ═══════════════════════════════════════════
+   LIGHTBOX
+═══════════════════════════════════════════ */
+.lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(2,5,16,.95); backdrop-filter: blur(20px);
+  display: none; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.lightbox.open { display: flex; }
+.lightbox-inner {
+  max-width: 900px; width: 100%; position: relative;
+}
+.lightbox-close {
+  position: absolute; top: -16px; right: -16px;
+  background: var(--glass-b); border: 1px solid var(--border);
+  color: var(--text); border-radius: 50%; width: 36px; height: 36px;
+  cursor: pointer; font-size: 18px; display: flex;
+  align-items: center; justify-content: center;
+}
+.lightbox img {
+  width: 100%; border-radius: var(--radius);
+  max-height: 80vh; object-fit: contain;
+}
+.lightbox-cap {
+  text-align: center; padding: 12px 0 0;
+  font-size: 12px; color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════
+   LOADING & EMPTY STATES
+═══════════════════════════════════════════ */
+.loader {
+  display: flex; gap: 6px; align-items: center;
+  justify-content: center; padding: 60px;
+}
+.loader span {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  animation: bounce 1.2s infinite ease-in-out;
+}
+.loader span:nth-child(2) { animation-delay: .2s; background: var(--accent2); }
+.loader span:nth-child(3) { animation-delay: .4s; background: var(--accent3); }
+@keyframes bounce {
+  0%,80%,100%{transform:scale(0)} 40%{transform:scale(1)}
+}
+
+.empty-state {
+  text-align: center; padding: 80px 20px; color: var(--text-dim);
+}
+.empty-state .empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+.toast {
+  position: fixed; bottom: 28px; right: 28px;
+  background: var(--glass-b); border: 1px solid var(--border);
+  backdrop-filter: blur(20px); border-radius: 12px;
+  padding: 12px 18px; font-size: 13px; z-index: 9999;
+  transform: translateY(80px); opacity: 0;
+  transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  display: flex; align-items: center; gap: 10px;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════ */
+@media (max-width: 900px) {
+  :root { --nav-w: 0px; }
+  .sidebar { display: none; }
+  .main { padding: 20px 18px; }
+  .apod-hero { grid-template-columns: 1fr; }
+  .neo-stats  { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- Sfondo stellato -->
+<canvas id="stars-canvas"></canvas>
+
+<!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="logo">
+    <span class="logo-icon">🛸</span>
+    <div class="logo-title">SPACE<br>EXPLORER</div>
+    <div class="logo-sub">NASA Dashboard</div>
+  </div>
+
+  <div class="nav-group-label">Esplora</div>
+  <div class="nav-item active" data-section="apod">
+    <span class="nav-icon">🌌</span> APOD
+  </div>
+  <div class="nav-item" data-section="neo">
+    <span class="nav-icon">☄️</span> Asteroidi
+  </div>
+  <div class="nav-item" data-section="gallery">
+    <span class="nav-icon">🔭</span> Galleria
+  </div>
+  <div class="sidebar-footer">
+    <div class="api-badge">
+      <span class="dot-live"></span> NASA API LIVE
+    </div>
+  </div>
+</nav>
+
+<!-- ── MAIN ──────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- ── APOD ────────────────────────────────────────────────── -->
+  <section id="apod" class="section active">
+    <div class="section-header">
+      <h1>ASTRONOMY PICTURE</h1>
+      <span class="tag">of the day</span>
+    </div>
+
+    <div id="apod-controls">
+      <div class="input-group">
+        <label>Data</label>
+        <input type="date" id="apod-date"/>
+      </div>
+      <button class="btn btn-primary" onclick="loadApod()">CARICA</button>
+      <button class="btn btn-ghost" onclick="loadApod(true)">OGGI</button>
+    </div>
+
+    <div id="apod-content">
+      <div class="loader"><span></span><span></span><span></span></div>
+    </div>
+  </section>
+
+  <!-- ── NEO ─────────────────────────────────────────────────── -->
+  <section id="neo" class="section">
+    <div class="section-header">
+      <h1>NEAR EARTH OBJECTS</h1>
+      <span class="tag">Asteroidi &amp; Comete</span>
+    </div>
+
+    <div id="apod-controls" style="margin-bottom:28px">
+      <div class="input-group">
+        <label>Data inizio</label>
+        <input type="date" id="neo-start"/>
+      </div>
+      <div class="input-group">
+        <label>Giorni (max 7)</label>
+        <input type="number" id="neo-days" value="3" min="1" max="7" style="width:110px"/>
+      </div>
+      <button class="btn btn-primary" onclick="loadNeo()">ANALIZZA</button>
+    </div>
+
+    <div id="neo-content">
+      <div class="loader"><span></span><span></span><span></span></div>
+    </div>
+  </section>
+
+  <!-- ── GALLERY ──────────────────────────────────────────────── -->
+  <section id="gallery" class="section">
+    <div class="section-header">
+      <h1>NASA IMAGE LIBRARY</h1>
+      <span class="tag">Archivio storico</span>
+    </div>
+
+    <div class="search-bar">
+      <input type="text" id="gallery-q" placeholder="Cerca: Apollo 11, nebula, Mars, Hubble..." onkeydown="if(event.key==='Enter')loadGallery()"/>
+      <button class="btn btn-primary" onclick="loadGallery()">CERCA</button>
+    </div>
+
+    <div class="quick-tags">
+      <span class="quick-tag" onclick="quickSearch('Apollo 11')">Apollo 11</span>
+      <span class="quick-tag" onclick="quickSearch('Hubble telescope')">Hubble</span>
+      <span class="quick-tag" onclick="quickSearch('nebula')">Nebula</span>
+      <span class="quick-tag" onclick="quickSearch('Mars surface')">Marte</span>
+      <span class="quick-tag" onclick="quickSearch('black hole')">Buco Nero</span>
+      <span class="quick-tag" onclick="quickSearch('ISS space station')">ISS</span>
+      <span class="quick-tag" onclick="quickSearch('Saturn rings')">Saturno</span>
+    </div>
+
+    <div id="gallery-content">
+      <div class="empty-state">
+        <div class="empty-icon">🔭</div>
+        <p>Cerca qualcosa nell'archivio NASA per iniziare</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox(event)">
+  <div class="lightbox-inner">
+    <button class="lightbox-close" onclick="closeLightbox()">✕</button>
+    <img id="lb-img" src="" alt=""/>
+    <div class="lightbox-cap" id="lb-cap"></div>
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+const API = '';   // stesso dominio FastAPI
+
+/* ── Stelle animate ─────────────────────────────────────────── */
+(function initStars() {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, stars = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+
+  function mkStar() {
+    return {
+      x: Math.random() * W,
+      y: Math.random() * H,
+      r: Math.random() * 1.4 + .2,
+      a: Math.random(),
+      s: (Math.random() - .5) * .003
+    };
+  }
+
+  function setup() {
+    resize();
+    stars = Array.from({length: 220}, mkStar);
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    stars.forEach(s => {
+      s.a += s.s;
+      if (s.a <= 0 || s.a >= 1) s.s *= -1;
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${s.a})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  setup(); draw();
+})();
+
+/* ── Navigazione ─────────────────────────────────────────────── */
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+    item.classList.add('active');
+    const sec = item.dataset.section;
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.getElementById(sec).classList.add('active');
+
+    // Carica sezione se necessario
+
+  });
+});
+
+/* ── Toast ───────────────────────────────────────────────────── */
+function showToast(msg, emoji = '✅') {
+  const t = document.getElementById('toast');
+  t.innerHTML = `${emoji} ${msg}`;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ── Lightbox ────────────────────────────────────────────────── */
+function openLightbox(url, caption) {
+  document.getElementById('lb-img').src = url;
+  document.getElementById('lb-cap').textContent = caption || '';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(e) {
+  if (!e || e.target === document.getElementById('lightbox')) {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+}
+
+/* ── Fetch helper ────────────────────────────────────────────── */
+async function apiFetch(path) {
+  const res = await fetch(API + path);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({detail: res.statusText}));
+    throw new Error(err.detail || 'Errore API');
+  }
+  return res.json();
+}
+
+/* ════════════════════════════════════════════════════════════
+   APOD
+════════════════════════════════════════════════════════════ */
+async function loadApod(oggi = false) {
+  const el  = document.getElementById('apod-content');
+  const inp = document.getElementById('apod-date');
+  if (oggi) inp.value = '';
+  const date = inp.value;
+  const url  = '/apod' + (date ? `?data=${date}` : '');
+
+  el.innerHTML = `<div class="loader"><span></span><span></span><span></span></div>`;
+  try {
+    const d = await apiFetch(url);
+    el.innerHTML = renderApod(d);
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${e.message}</p></div>`;
+  }
+}
+
+function renderApod(d) {
+  const media = d.media_type === 'video'
+    ? `<iframe src="${d.url}" allowfullscreen style="border-radius:var(--radius)"></iframe>`
+    : `<img src="${d.url}" alt="${d.title}" onclick="openLightbox('${d.hdurl || d.url}', '${d.title.replace(/'/g,"\\'")}')"/>`;
+
+  const copy = d.copyright ? `© ${d.copyright.trim()}` : 'NASA / Pubblico Dominio';
+
+  return `
+  <div class="apod-hero">
+    <div class="apod-img-wrap card">${media}</div>
+    <div class="apod-info">
+      <div>
+        <div class="apod-date-tag">📅 ${d.date}</div>
+        <h2 class="apod-title">${d.title}</h2>
+        <div class="apod-copyright">${copy}</div>
+      </div>
+      <div class="apod-explanation">${d.explanation}</div>
+      <div class="apod-actions">
+        ${d.hdurl ? `<a href="${d.hdurl}" target="_blank" class="btn btn-ghost">🔍 HD</a>` : ''}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════════════════
+   NEO
+════════════════════════════════════════════════════════════ */
+async function loadNeo() {
+  const start = document.getElementById('neo-start').value;
+  const days  = document.getElementById('neo-days').value;
+  const el    = document.getElementById('neo-content');
+
+  let url = `/neo/feed?days=${days}`;
+  if (start) url += `&start_date=${start}`;
+
+  el.innerHTML = `<div class="loader"><span></span><span></span><span></span></div>`;
+  try {
+    const neos = await apiFetch(url);
+    if (!neos.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">☄️</div><p>Nessun asteroide trovato.</p></div>`;
+      return;
+    }
+    const pericolosi = neos.filter(n => n.is_potentially_hazardous).length;
+    const maxVel     = Math.max(...neos.map(n => n.velocity_km_h)).toLocaleString('it-IT', {maximumFractionDigits:0});
+
+    el.innerHTML = `
+      <div class="neo-stats">
+        <div class="stat-card total">
+          <div class="stat-val">${neos.length}</div>
+          <div class="stat-label">Oggetti rilevati</div>
+        </div>
+        <div class="stat-card danger">
+          <div class="stat-val">${pericolosi}</div>
+          <div class="stat-label">Potenzialmente pericolosi</div>
+        </div>
+        <div class="stat-card speed">
+          <div class="stat-val">${maxVel}</div>
+          <div class="stat-label">Velocità max (km/h)</div>
+        </div>
+      </div>
+      <div class="neo-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Nome</th>
+              <th>Diametro (km)</th>
+              <th>Velocità (km/h)</th>
+              <th>Dist. Terra (km)</th>
+              <th>Avvicinamento</th>
+              <th>Rischio</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${neos.map(n => `
+            <tr>
+              <td><strong>${n.name}</strong></td>
+              <td>${n.diameter_min_km.toFixed(3)} – ${n.diameter_max_km.toFixed(3)}</td>
+              <td>${n.velocity_km_h.toLocaleString('it-IT')}</td>
+              <td>${Math.round(n.miss_distance_km).toLocaleString('it-IT')}</td>
+              <td>${n.close_approach_date}</td>
+              <td>${n.is_potentially_hazardous
+                    ? '<span class="badge badge-danger">⚠️ Pericoloso</span>'
+                    : '<span class="badge badge-safe">✅ Sicuro</span>'}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${e.message}</p></div>`;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════
+   GALLERY
+════════════════════════════════════════════════════════════ */
+function quickSearch(q) {
+  document.getElementById('gallery-q').value = q;
+  loadGallery();
+}
+
+async function loadGallery() {
+  const q  = document.getElementById('gallery-q').value.trim();
+  const el = document.getElementById('gallery-content');
+  if (!q) { showToast('Inserisci un termine di ricerca', '🔭'); return; }
+
+  el.innerHTML = `<div class="loader"><span></span><span></span><span></span></div>`;
+  try {
+    const items = await apiFetch(`/gallery/search?q=${encodeURIComponent(q)}&limit=16`);
+    if (!items.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌌</div><p>Nessun risultato per "${q}".</p></div>`;
+      return;
+    }
+    el.innerHTML = `<div class="gallery-grid">${items.map(i => renderGalleryCard(i)).join('')}</div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${e.message}</p></div>`;
+  }
+}
+
+function renderGalleryCard(i) {
+  const img = i.thumb_url
+    ? `<img src="${i.thumb_url}" alt="${i.title}" loading="lazy"/>`
+    : `<div class="no-img">🌌</div>`;
+  const title = i.title.replace(/'/g, "\\'");
+  const imgUrl = i.thumb_url || '';
+  return `
+  <div class="gallery-card" onclick="openLightbox('${imgUrl}','${title}')">
+    ${img}
+    <div class="g-info">
+      <div class="g-title">${i.title}</div>
+      <div class="g-date">${i.date_created || ''}</div>
+    </div>
+  </div>`;
+}
+
+
+</script>
+</body>
+</html>
