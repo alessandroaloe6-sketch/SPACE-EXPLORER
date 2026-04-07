@@ -69,8 +69,10 @@ class GalleryItem(BaseModel):
 
 # ── Funzioni di supporto ─────────────────────────────────────────────────────
 
-async def nasa_get(endpoint: str, params: dict = {}) -> dict:
+async def nasa_get(endpoint: str, params: dict = None) -> dict:
     """Effettua una GET verso le API NASA aggiungendo automaticamente la api_key."""
+    if params is None:
+        params = {}
     params["api_key"] = NASA_KEY
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.get(f"{NASA_BASE}{endpoint}", params=params)
@@ -80,8 +82,10 @@ async def nasa_get(endpoint: str, params: dict = {}) -> dict:
     return resp.json()
 
 
-async def img_get(endpoint: str, params: dict = {}) -> dict:
+async def img_get(endpoint: str, params: dict = None) -> dict:
     """Effettua una GET verso la NASA Image Library (non richiede chiave)."""
+    if params is None:
+        params = {}
     async with httpx.AsyncClient(timeout=15.0) as client:
         resp = await client.get(f"{IMG_BASE}{endpoint}", params=params)
     if resp.status_code != 200:
